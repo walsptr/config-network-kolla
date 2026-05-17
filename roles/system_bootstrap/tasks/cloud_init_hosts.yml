@@ -1,0 +1,34 @@
+---
+- name: Check cloud.cfg file for cloud-init hosts handling
+  ansible.builtin.stat:
+    path: "{{ system_cloud_cfg_file }}"
+  register: system_cloud_cfg_stat
+  when: system_manage_cloud_init_hosts | bool
+
+- name: Remove update_etc_hosts module from cloud.cfg
+  ansible.builtin.replace:
+    path: "{{ system_cloud_cfg_file }}"
+    regexp: '^(?P<indent>\s*)-\s*{{ system_cloud_init_hosts_module_name }}\s*$\n?'
+    replace: ''
+  when:
+    - system_manage_cloud_init_hosts | bool
+    - system_cloud_cfg_stat.stat.exists
+
+- name: Update manage_etc_hosts value in cloud.cfg when present
+  ansible.builtin.replace:
+    path: "{{ system_cloud_cfg_file }}"
+    regexp: '^(?P<indent>\s*)manage_etc_hosts:\s*.*$'
+    replace: '\g<indent>manage_etc_hosts: {{ ''true'' if system_cloud_init_manage_etc_hosts else ''false'' }}'
+  when:
+    - system_manage_cloud_init_hosts | bool
+    - system_cloud_cfg_stat.stat.exists
+
+- name: Ensure manage_etc_hosts is present in cloud.cfg
+  ansible.builtin.lineinfile:
+    path: "{{ system_cloud_cfg_file }}"
+    line: "manage_etc_hosts: {{ 'true' if system_cloud_init_manage_etc_hosts else 'false' }}"
+    insertafter: EOF
+    state: present
+  when:
+    - system_manage_cloud_init_hosts | bool
+    - system_cloud_cfg_stat.stat.exists

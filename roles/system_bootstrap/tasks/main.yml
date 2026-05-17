@@ -2,6 +2,9 @@
 - name: Validate system bootstrap variables
   ansible.builtin.import_tasks: validate.yml
 
+- name: Configure cloud-init hosts behavior
+  ansible.builtin.import_tasks: cloud_init_hosts.yml
+
 - name: Configure hostname
   ansible.builtin.import_tasks: hostname.yml
 

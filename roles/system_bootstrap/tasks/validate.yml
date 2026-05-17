@@ -47,3 +47,27 @@
     that:
       - system_hosts_file | string | length > 0
     fail_msg: Variabel system_hosts_file wajib berupa path string non-kosong.
+
+- name: Validate cloud-init hosts management flag type
+  ansible.builtin.assert:
+    that:
+      - system_manage_cloud_init_hosts | type_debug == 'bool'
+    fail_msg: Variabel system_manage_cloud_init_hosts wajib berupa boolean true/false.
+
+- name: Validate cloud.cfg file path
+  ansible.builtin.assert:
+    that:
+      - system_cloud_cfg_file | string | length > 0
+    fail_msg: Variabel system_cloud_cfg_file wajib berupa path string non-kosong.
+
+- name: Validate cloud-init manage_etc_hosts flag type
+  ansible.builtin.assert:
+    that:
+      - system_cloud_init_manage_etc_hosts | type_debug == 'bool'
+    fail_msg: Variabel system_cloud_init_manage_etc_hosts wajib berupa boolean true/false.
+
+- name: Validate cloud-init hosts module name
+  ansible.builtin.assert:
+    that:
+      - system_cloud_init_hosts_module_name | string | length > 0
+    fail_msg: Variabel system_cloud_init_hosts_module_name wajib berupa string non-kosong.

@@ -7,6 +7,7 @@ Project ini menyediakan playbook dan role Ansible untuk provisioning node Ubuntu
 - Setup hostname per node dari variabel host.
 - Setup timezone, NTP, dan `local-rtc` menggunakan `timedatectl`.
 - Sinkronisasi `/etc/hosts` untuk semua node `controller` dan `compute` berdasarkan segmen network.
+- Mencegah cloud-init menimpa `/etc/hosts` saat reboot dengan menonaktifkan `update_etc_hosts` dan `manage_etc_hosts`.
 - Disable konfigurasi network dari cloud-init.
 - Discovery MAC address berdasarkan nama interface yang saat ini ada di host.
 - Rename interface secara opsional menggunakan `match.macaddress` dan `set-name`.
@@ -46,16 +47,17 @@ Project ini menyediakan playbook dan role Ansible untuk provisioning node Ubuntu
 ## Alur Role
 
 1. Validasi variabel system bootstrap.
-2. Set hostname node.
-3. Set timezone, NTP, dan `local-rtc` dengan `timedatectl`.
-4. Render block managed `/etc/hosts` untuk alias hostname lintas node.
-5. Validasi schema variabel network.
-6. Disable network config dari cloud-init.
-7. Hapus file legacy `/etc/netplan/50-cloud-init.yaml` bila diaktifkan.
-8. Discover interface aktual dengan `ip -j link show`.
-9. Ambil MAC address berdasarkan `current_name`.
-10. Render file `/etc/netplan/60-openstack-network.yaml`.
-11. Jalankan `netplan generate` lalu `netplan apply` jika ada perubahan.
+2. Sesuaikan `cloud-init` agar tidak mengelola `/etc/hosts` lagi.
+3. Set hostname node.
+4. Set timezone, NTP, dan `local-rtc` dengan `timedatectl`.
+5. Render block managed `/etc/hosts` untuk alias hostname lintas node.
+6. Validasi schema variabel network.
+7. Disable network config dari cloud-init.
+8. Hapus file legacy `/etc/netplan/50-cloud-init.yaml` bila diaktifkan.
+9. Discover interface aktual dengan `ip -j link show`.
+10. Ambil MAC address berdasarkan `current_name`.
+11. Render file `/etc/netplan/60-openstack-network.yaml`.
+12. Jalankan `netplan generate` lalu `netplan apply` jika ada perubahan.
 
 ## Variabel System Bootstrap
 
@@ -87,6 +89,14 @@ Daftar grup inventory yang ikut dimasukkan ke `/etc/hosts`. Default saat ini ada
 
 Nama segmen yang diperlakukan sebagai management utama. Segmen ini akan mendapat dua alias: short hostname dan FQDN segmen, misalnya `compute01` dan `compute01.mgmt`.
 
+### `system_manage_cloud_init_hosts`
+
+Flag boolean untuk mengaktifkan perbaikan `cloud-init` pada `/etc/cloud/cloud.cfg` agar `/etc/hosts` tidak ditimpa saat reboot.
+
+### `system_cloud_cfg_file`
+
+Path file `cloud-init` utama yang akan dikelola. Default saat ini adalah `/etc/cloud/cloud.cfg`.
+
 Contoh:
 
 ```yaml
@@ -99,6 +109,8 @@ system_hosts_target_groups:
   - controller
   - compute
 system_hosts_primary_segment_name: mgmt
+system_manage_cloud_init_hosts: true
+system_cloud_cfg_file: /etc/cloud/cloud.cfg
 ```
 
 ## Variabel Utama
@@ -178,6 +190,12 @@ Contoh hasil:
 172.16.201.21 compute01.tenant
 ```
 
+## Integrasi Cloud-Init
+
+- Role `system_bootstrap` juga memperbaiki `/etc/cloud/cloud.cfg` agar `cloud-init` tidak menghapus hasil sinkronisasi `/etc/hosts` saat node reboot.
+- Module `update_etc_hosts` akan dihapus dari `cloud.cfg`.
+- Key `manage_etc_hosts: false` akan dipastikan ada agar pengelolaan `/etc/hosts` tetap berada di Ansible.
+
 ## Cara Menambah Node Baru
 
 1. Tambahkan host baru ke grup `controller` atau `compute` di `inventory/hosts.yml`.
@@ -243,6 +261,7 @@ ansible-playbook playbooks/provision-network.yml
 - Playbook berjalan `serial: 1` agar perubahan network diterapkan per-host, bukan sekaligus.
 - Role `system_bootstrap` dijalankan lebih dulu sebelum `network_provision`.
 - `/etc/hosts` dikelola dengan block managed, jadi entri lokal di luar block Ansible tetap dipertahankan.
+- `cloud-init` juga disesuaikan agar tidak mengambil alih `/etc/hosts` lagi setelah reboot.
 - IP yang dipakai untuk alias `/etc/hosts` adalah IP pertama pada `addresses`.
 - Default saat ini adalah apply langsung setelah `netplan generate` sukses.
 - Jika management interface sudah benar namanya, cukup isi `current_name` tanpa `name`.
