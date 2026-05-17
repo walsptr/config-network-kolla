@@ -8,6 +8,9 @@
 - name: Discover physical interfaces and resolve MAC addresses
   ansible.builtin.import_tasks: discover_interfaces.yml
 
+- name: Inspect live network state
+  ansible.builtin.import_tasks: inspect_live_state.yml
+
 - name: Render managed netplan configuration
   ansible.builtin.import_tasks: render_netplan.yml
 

@@ -19,10 +19,10 @@
 - name: Ensure requested interfaces exist on target host
   ansible.builtin.assert:
     that:
-      - item.current_name in network_interface_lookup
-      - network_interface_lookup[item.current_name].address is defined
-      - network_interface_lookup[item.current_name].address | length > 0
-    fail_msg: "Interface {{ item.current_name }} tidak ditemukan pada host atau tidak memiliki MAC address."
+      - item.current_name in network_interface_lookup or ((((item.name | default('')) | length) > 0) and (item.name in network_interface_lookup))
+      - network_interface_lookup[((item.current_name in network_interface_lookup) | ternary(item.current_name, (item.name | default(item.current_name))))].address is defined
+      - network_interface_lookup[((item.current_name in network_interface_lookup) | ternary(item.current_name, (item.name | default(item.current_name))))].address | length > 0
+    fail_msg: "Interface {{ item.current_name }} atau nama final {{ item.name | default(item.current_name) }} tidak ditemukan pada host atau tidak memiliki MAC address."
   loop: "{{ network_ethernets }}"
   loop_control:
     label: "{{ item.current_name }}"
@@ -37,8 +37,10 @@
       {{
         network_resolved_ethernets + [
           item | combine({
+            'lookup_name': ((item.current_name in network_interface_lookup) | ternary(item.current_name, (item.name | default(item.current_name)))),
+            'current_or_final_found_name': ((item.current_name in network_interface_lookup) | ternary(item.current_name, (item.name | default(item.current_name)))),
             'final_name': (((item.name | default('')) | length > 0) | ternary(item.name, item.current_name)),
-            'macaddress': network_interface_lookup[item.current_name].address,
+            'macaddress': network_interface_lookup[((item.current_name in network_interface_lookup) | ternary(item.current_name, (item.name | default(item.current_name))))].address,
             'rename': (((item.name | default('')) | length > 0) and (item.name != item.current_name))
           }, recursive=True)
         ]

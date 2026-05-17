@@ -1,0 +1,103 @@
+---
+- name: Inspect live network state in JSON format
+  ansible.builtin.command: ip -j address show
+  register: network_ip_address_result
+  changed_when: false
+  when: network_validate_live_state | bool
+
+- name: Parse live network state
+  ansible.builtin.set_fact:
+    network_live_ip_addresses: "{{ network_ip_address_result.stdout | from_json }}"
+    network_live_interface_names: "{{ (network_ip_address_result.stdout | from_json) | map(attribute='ifname') | list }}"
+    network_live_address_map: {}
+  when: network_validate_live_state | bool
+
+- name: Build live address map by interface name
+  ansible.builtin.set_fact:
+    network_live_address_map: >-
+      {{
+        network_live_address_map | combine({
+          item.ifname: (
+            item.addr_info | default([])
+            | selectattr('local', 'defined')
+            | map(attribute='local')
+            | list
+          )
+        })
+      }}
+  loop: "{{ network_live_ip_addresses }}"
+  loop_control:
+    label: "{{ item.ifname }}"
+  when: network_validate_live_state | bool
+
+- name: Check whether all final ethernet interfaces exist in live state
+  ansible.builtin.set_fact:
+    network_live_ethernets_present: "{{ (network_resolved_ethernets | map(attribute='final_name') | list | difference(network_live_interface_names) | length) == 0 }}"
+  when: network_validate_live_state | bool
+
+- name: Check whether all bond interfaces exist in live state
+  ansible.builtin.set_fact:
+    network_live_bonds_present: "{{ (network_bonds | map(attribute='name') | list | difference(network_live_interface_names) | length) == 0 }}"
+  when: network_validate_live_state | bool
+
+- name: Check whether all vlan interfaces exist in live state
+  ansible.builtin.set_fact:
+    network_live_vlans_present: "{{ (network_vlans | map(attribute='name') | list | difference(network_live_interface_names) | length) == 0 }}"
+  when: network_validate_live_state | bool
+
+- name: Reset live state IP mismatches
+  ansible.builtin.set_fact:
+    network_live_ip_mismatches: []
+  when: network_validate_live_state | bool
+
+- name: Check ethernet IP addresses against live state
+  ansible.builtin.set_fact:
+    network_live_ip_mismatches: "{{ network_live_ip_mismatches + [item.final_name] }}"
+  loop: "{{ network_resolved_ethernets }}"
+  loop_control:
+    label: "{{ item.final_name }}"
+  when:
+    - network_validate_live_state | bool
+    - item.addresses is defined
+    - item.addresses | length > 0
+    - (item.addresses[0] | string).split('/')[0] not in (network_live_address_map[item.final_name] | default([]))
+
+- name: Check bond IP addresses against live state
+  ansible.builtin.set_fact:
+    network_live_ip_mismatches: "{{ network_live_ip_mismatches + [item.name] }}"
+  loop: "{{ network_bonds }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - network_validate_live_state | bool
+    - item.addresses is defined
+    - item.addresses | length > 0
+    - (item.addresses[0] | string).split('/')[0] not in (network_live_address_map[item.name] | default([]))
+
+- name: Check vlan IP addresses against live state
+  ansible.builtin.set_fact:
+    network_live_ip_mismatches: "{{ network_live_ip_mismatches + [item.name] }}"
+  loop: "{{ network_vlans }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - network_validate_live_state | bool
+    - item.addresses is defined
+    - item.addresses | length > 0
+    - (item.addresses[0] | string).split('/')[0] not in (network_live_address_map[item.name] | default([]))
+
+- name: Determine whether live state already matches desired network state
+  ansible.builtin.set_fact:
+    network_live_state_matches: >-
+      {{
+        network_live_ethernets_present
+        and network_live_bonds_present
+        and network_live_vlans_present
+        and (network_live_ip_mismatches | length == 0)
+      }}
+  when: network_validate_live_state | bool
+
+- name: Default live state match result when validation is disabled
+  ansible.builtin.set_fact:
+    network_live_state_matches: false
+  when: not (network_validate_live_state | bool)

@@ -8,13 +8,21 @@
         or (network_netplan_template_result is defined and network_netplan_template_result.changed)
       }}
 
+- name: Determine whether netplan should be applied
+  ansible.builtin.set_fact:
+    network_should_apply: >-
+      {{
+        network_any_changes
+        and ((not (network_validate_live_state | bool)) or (not (network_live_state_matches | default(false))))
+      }}
+
 - name: Validate generated netplan configuration
   ansible.builtin.command: netplan generate
   changed_when: false
-  when: network_any_changes | bool
+  when: network_should_apply | bool
 
 - name: Apply netplan configuration
   ansible.builtin.command: netplan apply
   when:
     - network_apply_immediately | bool
-    - network_any_changes | bool
+    - network_should_apply | bool

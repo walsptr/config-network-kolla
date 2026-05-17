@@ -10,6 +10,7 @@ Project ini menyediakan playbook dan role Ansible untuk provisioning node Ubuntu
 - Mencegah cloud-init menimpa `/etc/hosts` saat reboot dengan menonaktifkan `update_etc_hosts` dan `manage_etc_hosts`.
 - Disable konfigurasi network dari cloud-init.
 - Discovery MAC address berdasarkan nama interface yang saat ini ada di host.
+- Validasi live state host agar `netplan generate/apply` di-skip jika interface, bond, VLAN, dan IP pertama sudah sesuai.
 - Rename interface secara opsional menggunakan `match.macaddress` dan `set-name`.
 - Render file netplan dinamis untuk ethernet, bond, dan VLAN.
 - Validasi input sebelum render dan validasi `netplan generate` sebelum `netplan apply`.
@@ -55,9 +56,10 @@ Project ini menyediakan playbook dan role Ansible untuk provisioning node Ubuntu
 7. Disable network config dari cloud-init.
 8. Hapus file legacy `/etc/netplan/50-cloud-init.yaml` bila diaktifkan.
 9. Discover interface aktual dengan `ip -j link show`.
-10. Ambil MAC address berdasarkan `current_name`.
-11. Render file `/etc/netplan/60-openstack-network.yaml`.
-12. Jalankan `netplan generate` lalu `netplan apply` jika ada perubahan.
+10. Ambil MAC address berdasarkan `current_name` atau nama final bila interface sudah ter-rename.
+11. Inspect live state network host.
+12. Render file `/etc/netplan/60-openstack-network.yaml`.
+13. Jalankan `netplan generate` lalu `netplan apply` hanya jika ada perubahan dan live state host belum sesuai.
 
 ## Variabel System Bootstrap
 
@@ -119,10 +121,14 @@ system_cloud_cfg_file: /etc/cloud/cloud.cfg
 
 Daftar interface fisik yang dikelola. Field penting:
 
-- `current_name`: nama interface yang saat ini ada di OS.
+- `current_name`: nama interface yang saat ini ada di OS sebelum rename, tetapi role juga dapat menerima nama final jika interface sudah pernah dikonfigurasi.
 - `name`: nama target baru. Jika dikosongkan atau tidak diisi, interface tidak di-rename.
 - `segment_name`: nama segmen network untuk generate alias `/etc/hosts`, misalnya `mgmt`, `api_internal`, `storage`, atau `tenant`.
 - `dhcp4`, `dhcp6`, `addresses`, `gateway4`, `gateway6`, `nameservers`, `routes`, `mtu`, `optional`: opsi netplan per interface.
+
+### `network_validate_live_state`
+
+Flag boolean untuk memeriksa kondisi aktif host sebelum memutuskan `netplan generate/apply`. Default saat ini `true`.
 
 Contoh:
 
@@ -264,6 +270,7 @@ ansible-playbook playbooks/provision-network.yml
 - `cloud-init` juga disesuaikan agar tidak mengambil alih `/etc/hosts` lagi setelah reboot.
 - IP yang dipakai untuk alias `/etc/hosts` adalah IP pertama pada `addresses`.
 - Default saat ini adalah apply langsung setelah `netplan generate` sukses.
-- Jika management interface sudah benar namanya, cukup isi `current_name` tanpa `name`.
+- Jika management interface sudah benar namanya atau interface sudah pernah di-rename, role dapat menerima `current_name` atau nama final yang sudah aktif.
+- Jika live state host sudah sesuai dengan desired state, role tetap boleh merender file netplan tetapi tidak menjalankan `netplan generate/apply`.
 - Bond harus selalu mereferensikan nama interface final, bukan nama interface sebelum rename.
 - VLAN harus mereferensikan `link` ke ethernet final atau ke bond yang sudah didefinisikan.
