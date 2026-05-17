@@ -1,0 +1,20 @@
+---
+- name: Determine whether netplan changed
+  ansible.builtin.set_fact:
+    network_any_changes: >-
+      {{
+        (network_cloud_init_disable_result is defined and network_cloud_init_disable_result.changed)
+        or (network_legacy_netplan_cleanup_result is defined and network_legacy_netplan_cleanup_result.changed)
+        or (network_netplan_template_result is defined and network_netplan_template_result.changed)
+      }}
+
+- name: Validate generated netplan configuration
+  ansible.builtin.command: netplan generate
+  changed_when: false
+  when: network_any_changes | bool
+
+- name: Apply netplan configuration
+  ansible.builtin.command: netplan apply
+  when:
+    - network_apply_immediately | bool
+    - network_any_changes | bool

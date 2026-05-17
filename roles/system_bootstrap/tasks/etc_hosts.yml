@@ -1,0 +1,22 @@
+---
+- name: Build target hosts list for managed /etc/hosts
+  ansible.builtin.set_fact:
+    system_hosts_inventory_targets: "{{ (system_hosts_inventory_targets | default([])) + (groups[item] | default([])) }}"
+  loop: "{{ system_hosts_target_groups }}"
+  when: system_manage_etc_hosts | bool
+
+- name: Deduplicate target hosts list for managed /etc/hosts
+  ansible.builtin.set_fact:
+    system_hosts_inventory_targets: "{{ system_hosts_inventory_targets | default([]) | unique }}"
+  when: system_manage_etc_hosts | bool
+
+- name: Manage /etc/hosts entries for controller and compute nodes
+  ansible.builtin.blockinfile:
+    path: "{{ system_hosts_file }}"
+    marker: "# {mark} ANSIBLE MANAGED OPENSTACK HOSTS"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    block: "{{ lookup('ansible.builtin.template', 'hosts.managed.j2') }}"
+  when: system_manage_etc_hosts | bool

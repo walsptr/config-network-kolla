@@ -1,0 +1,49 @@
+---
+- name: Validate required hostname variable
+  ansible.builtin.assert:
+    that:
+      - system_hostname | string | length > 0
+    fail_msg: Variabel system_hostname wajib diisi pada host_vars tiap node.
+
+- name: Validate timezone variable
+  ansible.builtin.assert:
+    that:
+      - system_timezone | string | length > 0
+    fail_msg: Variabel system_timezone wajib berupa string non-kosong.
+
+- name: Validate NTP flag type
+  ansible.builtin.assert:
+    that:
+      - system_ntp_enabled | type_debug == 'bool'
+    fail_msg: Variabel system_ntp_enabled wajib berupa boolean true/false.
+
+- name: Validate local RTC flag type
+  ansible.builtin.assert:
+    that:
+      - system_local_rtc | type_debug == 'bool'
+    fail_msg: Variabel system_local_rtc wajib berupa boolean true/false.
+
+- name: Validate manage /etc/hosts flag type
+  ansible.builtin.assert:
+    that:
+      - system_manage_etc_hosts | type_debug == 'bool'
+    fail_msg: Variabel system_manage_etc_hosts wajib berupa boolean true/false.
+
+- name: Validate target groups for /etc/hosts
+  ansible.builtin.assert:
+    that:
+      - system_hosts_target_groups | type_debug == 'list'
+      - system_hosts_target_groups | length > 0
+    fail_msg: Variabel system_hosts_target_groups wajib berupa list non-kosong.
+
+- name: Validate primary segment name for /etc/hosts
+  ansible.builtin.assert:
+    that:
+      - system_hosts_primary_segment_name | string | length > 0
+    fail_msg: Variabel system_hosts_primary_segment_name wajib berupa string non-kosong.
+
+- name: Validate /etc/hosts target file
+  ansible.builtin.assert:
+    that:
+      - system_hosts_file | string | length > 0
+    fail_msg: Variabel system_hosts_file wajib berupa path string non-kosong.

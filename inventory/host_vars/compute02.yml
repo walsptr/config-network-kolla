@@ -1,0 +1,77 @@
+---
+system_hostname: compute02
+system_timezone: Asia/Jakarta
+system_ntp_enabled: true
+system_local_rtc: false
+
+network_ethernets:
+  - current_name: ens18
+    name: eth0
+    dhcp4: false
+  - current_name: ens19
+    name: eth1
+    dhcp4: false
+  - current_name: ens20
+    name: eth2
+    dhcp4: false
+  - current_name: ens21
+    name: eth3
+    dhcp4: false
+  - current_name: eth4
+    name: eth4
+    dhcp4: false
+    segment_name: mgmt
+    addresses:
+      - 192.168.1.105/24
+
+network_bonds:
+  - name: bond-data
+    interfaces:
+      - eth0
+      - eth1
+    parameters:
+      mode: active-backup
+      fail-over-mac-policy: active
+  - name: bond-api
+    interfaces:
+      - eth2
+      - eth3
+    parameters:
+      mode: active-backup
+      fail-over-mac-policy: active
+      
+network_vlans:
+  - name: bond-api.101
+    id: 101
+    link: bond-api
+    segment_name: api_internal
+    addresses:
+      - 10.10.101.105/24
+    
+  - name: bond-api.102
+    id: 102
+    link: bond-api
+    segment_name: api_external
+    addresses:
+      - 10.10.102.105/24
+    
+  - name: bond-api.103
+    id: 103
+    link: bond-api
+    segment_name: tenant
+    addresses:
+      - 10.10.103.105/24
+    
+  - name: bond-data.104
+    id: 104
+    link: bond-data
+    segment_name: storage
+    addresses:
+      - 10.10.104.105/24
+    
+  - name: bond-data.105
+    id: 105
+    link: bond-data
+    segment_name: storage_mgmt
+    addresses:
+      - 10.10.105.105/24

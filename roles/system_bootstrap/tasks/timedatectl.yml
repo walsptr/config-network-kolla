@@ -1,0 +1,27 @@
+---
+- name: Get current timezone
+  ansible.builtin.command: timedatectl show --property=Timezone --value
+  register: system_timezone_current
+  changed_when: false
+
+- name: Get current NTP state
+  ansible.builtin.command: timedatectl show --property=NTP --value
+  register: system_ntp_current
+  changed_when: false
+
+- name: Get current local RTC state
+  ansible.builtin.command: timedatectl show --property=LocalRTC --value
+  register: system_local_rtc_current
+  changed_when: false
+
+- name: Set timezone
+  ansible.builtin.command: "timedatectl set-timezone {{ system_timezone }}"
+  when: system_timezone_current.stdout != system_timezone
+
+- name: Set NTP state
+  ansible.builtin.command: "timedatectl set-ntp {{ 'true' if system_ntp_enabled else 'false' }}"
+  when: system_ntp_current.stdout != ('yes' if system_ntp_enabled else 'no')
+
+- name: Set local RTC state
+  ansible.builtin.command: "timedatectl set-local-rtc {{ '1' if system_local_rtc else '0' }}"
+  when: system_local_rtc_current.stdout != ('yes' if system_local_rtc else 'no')

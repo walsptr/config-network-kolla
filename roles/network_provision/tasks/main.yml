@@ -1,0 +1,15 @@
+---
+- name: Validate network input variables
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Disable cloud-init network management
+  ansible.builtin.import_tasks: disable_cloud_init.yml
+
+- name: Discover physical interfaces and resolve MAC addresses
+  ansible.builtin.import_tasks: discover_interfaces.yml
+
+- name: Render managed netplan configuration
+  ansible.builtin.import_tasks: render_netplan.yml
+
+- name: Validate and apply netplan configuration
+  ansible.builtin.import_tasks: apply_netplan.yml

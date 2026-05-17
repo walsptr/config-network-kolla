@@ -1,0 +1,11 @@
+---
+system_hostname: ""
+system_timezone: "UTC"
+system_ntp_enabled: true
+system_local_rtc: false
+system_manage_etc_hosts: true
+system_hosts_target_groups:
+  - controller
+  - compute
+system_hosts_primary_segment_name: mgmt
+system_hosts_file: /etc/hosts

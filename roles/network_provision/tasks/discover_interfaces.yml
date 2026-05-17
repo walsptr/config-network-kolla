@@ -1,0 +1,48 @@
+---
+- name: Discover current interfaces in JSON format
+  ansible.builtin.command: ip -j link show
+  register: network_ip_link_result
+  changed_when: false
+
+- name: Parse interface discovery result
+  ansible.builtin.set_fact:
+    network_ip_links: "{{ network_ip_link_result.stdout | from_json }}"
+    network_interface_lookup: {}
+
+- name: Build interface lookup by current name
+  ansible.builtin.set_fact:
+    network_interface_lookup: "{{ network_interface_lookup | combine({item.ifname: item}) }}"
+  loop: "{{ network_ip_links }}"
+  loop_control:
+    label: "{{ item.ifname }}"
+
+- name: Ensure requested interfaces exist on target host
+  ansible.builtin.assert:
+    that:
+      - item.current_name in network_interface_lookup
+      - network_interface_lookup[item.current_name].address is defined
+      - network_interface_lookup[item.current_name].address | length > 0
+    fail_msg: "Interface {{ item.current_name }} tidak ditemukan pada host atau tidak memiliki MAC address."
+  loop: "{{ network_ethernets }}"
+  loop_control:
+    label: "{{ item.current_name }}"
+
+- name: Reset resolved ethernet definitions
+  ansible.builtin.set_fact:
+    network_resolved_ethernets: []
+
+- name: Build resolved ethernet definitions
+  ansible.builtin.set_fact:
+    network_resolved_ethernets: >-
+      {{
+        network_resolved_ethernets + [
+          item | combine({
+            'final_name': (((item.name | default('')) | length > 0) | ternary(item.name, item.current_name)),
+            'macaddress': network_interface_lookup[item.current_name].address,
+            'rename': (((item.name | default('')) | length > 0) and (item.name != item.current_name))
+          }, recursive=True)
+        ]
+      }}
+  loop: "{{ network_ethernets }}"
+  loop_control:
+    label: "{{ item.current_name }}"

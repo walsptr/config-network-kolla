@@ -1,0 +1,149 @@
+---
+- name: Validate top-level variable types
+  ansible.builtin.assert:
+    that:
+      - network_ethernets | type_debug == 'list'
+      - network_bonds | type_debug == 'list'
+      - network_vlans | type_debug == 'list'
+    fail_msg: network_ethernets, network_bonds, dan network_vlans harus berupa list.
+
+- name: Ensure at least one ethernet is defined
+  ansible.builtin.assert:
+    that:
+      - network_ethernets | length > 0
+    fail_msg: Minimal satu interface pada network_ethernets harus didefinisikan.
+
+- name: Reset validation helper facts
+  ansible.builtin.set_fact:
+    network_final_interface_names: []
+    network_bond_names: []
+    network_vlan_names: []
+    network_segment_names: []
+
+- name: Validate ethernet definitions
+  ansible.builtin.assert:
+    that:
+      - item.current_name is defined
+      - item.current_name | string | length > 0
+      - item.name is not defined or item.name | string | length > 0
+      - item.segment_name is not defined or item.segment_name | string | length > 0
+      - item.segment_name is not defined or (item.addresses is defined and item.addresses | length > 0)
+    fail_msg: Setiap item pada network_ethernets wajib memiliki current_name, dan name tidak boleh string kosong bila diisi.
+  loop: "{{ network_ethernets }}"
+  loop_control:
+    label: "{{ item.current_name | default('undefined') }}"
+
+- name: Collect final ethernet names
+  ansible.builtin.set_fact:
+    network_final_interface_names: "{{ network_final_interface_names + [(((item.name | default('')) | length > 0) | ternary(item.name, item.current_name))] }}"
+  loop: "{{ network_ethernets }}"
+  loop_control:
+    label: "{{ item.current_name }}"
+
+- name: Collect ethernet segment names
+  ansible.builtin.set_fact:
+    network_segment_names: "{{ network_segment_names + [item.segment_name] }}"
+  loop: "{{ network_ethernets }}"
+  loop_control:
+    label: "{{ item.current_name }}"
+  when: item.segment_name is defined and item.segment_name | string | length > 0
+
+- name: Ensure current ethernet names are unique
+  ansible.builtin.assert:
+    that:
+      - (network_ethernets | map(attribute='current_name') | list | unique | length) == (network_ethernets | length)
+    fail_msg: current_name pada network_ethernets harus unik.
+
+- name: Ensure final ethernet names are unique
+  ansible.builtin.assert:
+    that:
+      - (network_final_interface_names | unique | length) == (network_final_interface_names | length)
+    fail_msg: Nama akhir interface ethernet harus unik.
+
+- name: Validate bond definitions
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name | string | length > 0
+      - item.interfaces is defined
+      - item.interfaces | length > 0
+      - (item.interfaces | difference(network_final_interface_names)) | length == 0
+      - item.segment_name is not defined or item.segment_name | string | length > 0
+      - item.segment_name is not defined or (item.addresses is defined and item.addresses | length > 0)
+    fail_msg: Bond harus memiliki name, interfaces, dan seluruh member bond harus berasal dari interface ethernet final.
+  loop: "{{ network_bonds }}"
+  loop_control:
+    label: "{{ item.name | default('undefined') }}"
+
+- name: Collect bond names
+  ansible.builtin.set_fact:
+    network_bond_names: "{{ network_bond_names + [item.name] }}"
+  loop: "{{ network_bonds }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Collect bond segment names
+  ansible.builtin.set_fact:
+    network_segment_names: "{{ network_segment_names + [item.segment_name] }}"
+  loop: "{{ network_bonds }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.segment_name is defined and item.segment_name | string | length > 0
+
+- name: Ensure bond names are unique
+  ansible.builtin.assert:
+    that:
+      - (network_bond_names | unique | length) == (network_bond_names | length)
+      - (network_bond_names | intersect(network_final_interface_names) | length) == 0
+    fail_msg: Nama bond harus unik dan tidak boleh sama dengan nama interface ethernet final.
+
+- name: Validate VLAN definitions
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name | string | length > 0
+      - item.id is defined
+      - (item.id | int) > 0
+      - (item.id | int) < 4095
+      - item.link is defined
+      - item.link in (network_final_interface_names + network_bond_names)
+      - item.segment_name is not defined or item.segment_name | string | length > 0
+      - item.segment_name is not defined or (item.addresses is defined and item.addresses | length > 0)
+    fail_msg: VLAN harus memiliki name, id yang valid, dan link yang mengarah ke ethernet atau bond yang valid.
+  loop: "{{ network_vlans }}"
+  loop_control:
+    label: "{{ item.name | default('undefined') }}"
+
+- name: Collect VLAN names
+  ansible.builtin.set_fact:
+    network_vlan_names: "{{ network_vlan_names + [item.name] }}"
+  loop: "{{ network_vlans }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Collect VLAN segment names
+  ansible.builtin.set_fact:
+    network_segment_names: "{{ network_segment_names + [item.segment_name] }}"
+  loop: "{{ network_vlans }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.segment_name is defined and item.segment_name | string | length > 0
+
+- name: Ensure VLAN names are unique
+  ansible.builtin.assert:
+    that:
+      - (network_vlan_names | unique | length) == (network_vlan_names | length)
+      - (network_vlan_names | intersect(network_final_interface_names + network_bond_names) | length) == 0
+    fail_msg: Nama VLAN harus unik dan tidak boleh berbenturan dengan nama ethernet atau bond.
+
+- name: Ensure segment names are unique per host
+  ansible.builtin.assert:
+    that:
+      - (network_segment_names | unique | length) == (network_segment_names | length)
+    fail_msg: segment_name harus unik per host agar alias /etc/hosts tidak bentrok.
+
+- name: Ensure primary management segment appears at most once
+  ansible.builtin.assert:
+    that:
+      - (network_segment_names | select('equalto', system_hosts_primary_segment_name) | list | length) <= 1
+    fail_msg: Segmen primary management hanya boleh muncul satu kali per host.

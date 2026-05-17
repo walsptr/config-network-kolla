@@ -1,0 +1,25 @@
+---
+- name: Disable cloud-init network configuration
+  ansible.builtin.copy:
+    dest: "{{ network_cloud_init_disable_file }}"
+    content: |
+      network: {config: disabled}
+    owner: root
+    group: root
+    mode: '0644'
+  when: network_disable_cloud_init | bool
+  register: network_cloud_init_disable_result
+
+- name: Check legacy cloud-init netplan file
+  ansible.builtin.stat:
+    path: "{{ network_legacy_cloud_init_netplan_file }}"
+  register: network_legacy_cloud_init_netplan_stat
+
+- name: Remove legacy cloud-init netplan file
+  ansible.builtin.file:
+    path: "{{ network_legacy_cloud_init_netplan_file }}"
+    state: absent
+  when:
+    - network_cleanup_legacy_cloud_init_netplan | bool
+    - network_legacy_cloud_init_netplan_stat.stat.exists
+  register: network_legacy_netplan_cleanup_result

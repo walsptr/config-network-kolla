@@ -1,0 +1,9 @@
+---
+- name: Provision network on Ubuntu OpenStack nodes
+  hosts: controller:compute
+  serial: 1
+  gather_facts: false
+  become: true
+  roles:
+    - role: system_bootstrap
+    - role: network_provision

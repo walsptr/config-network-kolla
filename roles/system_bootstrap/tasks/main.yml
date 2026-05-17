@@ -1,0 +1,12 @@
+---
+- name: Validate system bootstrap variables
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Configure hostname
+  ansible.builtin.import_tasks: hostname.yml
+
+- name: Configure timedatectl settings
+  ansible.builtin.import_tasks: timedatectl.yml
+
+- name: Configure managed /etc/hosts entries
+  ansible.builtin.import_tasks: etc_hosts.yml

@@ -1,0 +1,17 @@
+{% for target_host in system_hosts_inventory_targets | default([]) %}
+{% set target_vars = hostvars[target_host] %}
+{% set target_hostname = target_vars.system_hostname | default('') %}
+{% set network_objects = (target_vars.network_ethernets | default([])) + (target_vars.network_bonds | default([])) + (target_vars.network_vlans | default([])) %}
+{% if target_hostname | string | length > 0 %}
+{% for network_object in network_objects %}
+{% if network_object.segment_name is defined and network_object.segment_name | string | length > 0 and network_object.addresses is defined and network_object.addresses | length > 0 %}
+{% set first_ip = (network_object.addresses[0] | string).split('/')[0] %}
+{% if network_object.segment_name == system_hosts_primary_segment_name %}
+{{ first_ip }} {{ target_hostname }} {{ target_hostname }}.{{ network_object.segment_name }}
+{% else %}
+{{ first_ip }} {{ target_hostname }}.{{ network_object.segment_name }}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}

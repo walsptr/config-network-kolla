@@ -1,0 +1,13 @@
+---
+network_renderer: networkd
+network_version: 2
+network_netplan_file: /etc/netplan/60-openstack-network.yaml
+network_apply_immediately: true
+network_disable_cloud_init: true
+network_cleanup_legacy_cloud_init_netplan: true
+network_cloud_init_disable_file: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+network_legacy_cloud_init_netplan_file: /etc/netplan/50-cloud-init.yaml
+
+network_ethernets: []
+network_bonds: []
+network_vlans: []
