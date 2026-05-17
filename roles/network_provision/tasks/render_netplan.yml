@@ -5,6 +5,6 @@
     dest: "{{ network_netplan_file }}"
     owner: root
     group: root
-    mode: '0644'
+    mode: '0600'
   register: network_netplan_template_result
 

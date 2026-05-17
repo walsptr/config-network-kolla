@@ -6,7 +6,11 @@ network:
   ethernets:
 {% for iface in network_resolved_ethernets %}
 {% set iface_has_settings = iface.rename or iface.mtu is defined or iface.optional is defined or iface.dhcp4 is defined or iface.dhcp6 is defined or iface.addresses is defined or iface.gateway4 is defined or iface.gateway6 is defined or iface.nameservers is defined or iface.routes is defined %}
-    {{ iface.final_name }}:{% if not iface_has_settings %} {}{% endif %}
+{% if iface_has_settings %}
+    {{ iface.final_name }}:
+{% else %}
+    {{ iface.final_name }}: {}
+{% endif %}
 {% if iface.rename %}
       match:
         macaddress: "{{ iface.macaddress }}"
