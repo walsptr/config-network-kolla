@@ -8,6 +8,7 @@ system_hosts_target_groups:
   - controller
   - compute
 system_hosts_primary_segment_name: mgmt
+system_hosts_domain_name: ""
 system_hosts_file: /etc/hosts
 system_manage_cloud_init_hosts: true
 system_cloud_cfg_file: /etc/cloud/cloud.cfg

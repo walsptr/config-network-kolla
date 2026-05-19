@@ -91,6 +91,10 @@ Daftar grup inventory yang ikut dimasukkan ke `/etc/hosts`. Default saat ini ada
 
 Nama segmen yang diperlakukan sebagai management utama. Segmen ini akan mendapat dua alias: short hostname dan FQDN segmen, misalnya `compute01` dan `compute01.mgmt`.
 
+### `system_hosts_domain_name`
+
+Domain global untuk menambahkan alias FQDN segmen pada `/etc/hosts`, misalnya `compute01.mgmt.lab.local`.
+
 ### `system_manage_cloud_init_hosts`
 
 Flag boolean untuk mengaktifkan perbaikan `cloud-init` pada `/etc/cloud/cloud.cfg` agar `/etc/hosts` tidak ditimpa saat reboot.
@@ -111,6 +115,7 @@ system_hosts_target_groups:
   - controller
   - compute
 system_hosts_primary_segment_name: mgmt
+system_hosts_domain_name: lab.local
 system_manage_cloud_init_hosts: true
 system_cloud_cfg_file: /etc/cloud/cloud.cfg
 ```
@@ -184,16 +189,16 @@ network_vlans:
 ## Pola Alias /etc/hosts
 
 - Jika `segment_name` sama dengan `system_hosts_primary_segment_name`, hasil alias:
-  - `IP system_hostname system_hostname.segment_name`
+  - `IP system_hostname system_hostname.segment_name system_hostname.segment_name.domain_name`
 - Jika `segment_name` bukan primary management, hasil alias:
-  - `IP system_hostname.segment_name`
+  - `IP system_hostname.segment_name system_hostname.segment_name.domain_name`
 
 Contoh hasil:
 
 ```text
-10.10.10.21 compute01 compute01.mgmt
-172.16.101.21 compute01.api_internal
-172.16.201.21 compute01.tenant
+10.10.10.21 compute01 compute01.mgmt compute01.mgmt.lab.local
+172.16.101.21 compute01.api_internal compute01.api_internal.lab.local
+172.16.201.21 compute01.tenant compute01.tenant.lab.local
 ```
 
 ## Integrasi Cloud-Init

@@ -42,6 +42,12 @@
       - system_hosts_primary_segment_name | string | length > 0
     fail_msg: Variabel system_hosts_primary_segment_name wajib berupa string non-kosong.
 
+- name: Validate domain name for /etc/hosts
+  ansible.builtin.assert:
+    that:
+      - system_hosts_domain_name | string | length > 0
+    fail_msg: Variabel system_hosts_domain_name wajib berupa string non-kosong.
+
 - name: Validate /etc/hosts target file
   ansible.builtin.assert:
     that:
